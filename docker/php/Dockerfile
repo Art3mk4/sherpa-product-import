@@ -8,6 +8,10 @@ WORKDIR /var/www
 
 # ---------- composer deps (prod) ----------
 FROM composer:2 AS vendor
+# api.github.com с IP CI-раннеров периодически не отвечает за дефолтные 10 сек
+# (curl error 28, 0 байт) — поднимаем connect-таймаут: 30 сек × 3 ретрая composer
+# дают 90 сек на проблемный URL вместо 30
+ENV COMPOSER_CONNECT_TIMEOUT=30
 WORKDIR /app
 COPY backend/composer.json backend/composer.lock ./
 # composer-образ не содержит ext-pdo_pgsql/ext-amqp (они есть в runtime-стадии base) —
