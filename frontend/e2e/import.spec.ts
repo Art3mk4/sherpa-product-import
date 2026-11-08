@@ -73,9 +73,12 @@ test('4. карточка товара: поля, атрибуты, блок и�
   await page.locator('tr[mat-row]').first().click();
   await page.waitForURL(/\/products\/\d+/);
 
-  await expect(page.getByText('Внешний код').or(page.locator('.code'))).toBeVisible();
+  // .meta .code — уникально для шапки карточки: текст «Внешний код» есть и в таблицах
+  // отчёта импорта ниже (рендерятся, когда у последнего импорта есть ошибки/warnings)
+  await expect(page.locator('.meta .code')).toBeVisible();
   await expect(page.getByText('Дополнительные атрибуты')).toBeVisible();
-  await expect(page.getByText('Изображения')).toBeVisible();
+  // exact — иначе substring-матчинг ловит и «не скачанные изображения» из отчёта импорта
+  await expect(page.getByText('Изображения', { exact: true })).toBeVisible();
   // атрибут «Размер»/«Бренд» присутствует у импортированных товаров
   await expect(page.locator('table.attributes').first()).toBeVisible();
 });
