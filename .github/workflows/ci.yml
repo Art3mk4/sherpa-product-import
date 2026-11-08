@@ -33,6 +33,9 @@ jobs:
       DB_NAME_TEST: app_test
       JWT_SECRET: ci_secret_ci_secret_ci_secret_ci_secret_32
       MESSENGER_TRANSPORT_DSN: 'in-memory://'
+      # Тесты идут на голом раннере, не в Docker: дефолтный /var/www/storage
+      # там не существует и не создаётся (нет прав) — пишем в workspace.
+      STORAGE_PATH: ${{ github.workspace }}/backend/var/storage
     steps:
       - uses: actions/checkout@v4
 
