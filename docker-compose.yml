@@ -25,14 +25,14 @@ services:
       retries: 30
 
   migrate:
-    build: { context: ., dockerfile: docker/php/Dockerfile, target: "${APP_TARGET:-dev}" }
+    build: { context: ., dockerfile: docker/php/Dockerfile, target: "${APP_TARGET:-dev}", args: { GITHUB_TOKEN: "${GITHUB_TOKEN:-}" } }
     env_file: .env
     command: ["php", "bin/console", "migrations:migrate", "--no-interaction", "--allow-no-migration"]
     depends_on: { db: { condition: service_healthy } }
     restart: "no"
 
   app:
-    build: { context: ., dockerfile: docker/php/Dockerfile, target: "${APP_TARGET:-dev}" }
+    build: { context: ., dockerfile: docker/php/Dockerfile, target: "${APP_TARGET:-dev}", args: { GITHUB_TOKEN: "${GITHUB_TOKEN:-}" } }
     env_file: .env
     volumes: [storage:/var/www/storage]
     dns: ["${DOCKER_DNS:-1.1.1.1}"]   # DNS для внешних запросов (скачивание изображений при импорте)
@@ -41,7 +41,7 @@ services:
       rabbitmq: { condition: service_healthy }
 
   worker:
-    build: { context: ., dockerfile: docker/php/Dockerfile, target: "${APP_TARGET:-dev}" }
+    build: { context: ., dockerfile: docker/php/Dockerfile, target: "${APP_TARGET:-dev}", args: { GITHUB_TOKEN: "${GITHUB_TOKEN:-}" } }
     env_file: .env
     command: ["php", "bin/console", "app:worker", "--time-limit=3600", "--memory-limit=128M"]
     volumes: [storage:/var/www/storage]

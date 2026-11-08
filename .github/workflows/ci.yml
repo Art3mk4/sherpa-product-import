@@ -103,6 +103,10 @@ jobs:
         run: |
           cp .env.example .env
           docker compose up -d --build --wait
+        # GITHUB_TOKEN → build-arg → composer github-oauth: неавторизованный api.github.com
+        # (dist-зипы зависимостей) троттлится на общих IP раннеров — curl 28/56 при сборке
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install Playwright browsers
         working-directory: frontend
@@ -137,6 +141,9 @@ jobs:
           context: .
           file: docker/php/Dockerfile
           target: prod
+          # авторизация composer при скачивании dist-зипов с api.github.com (см. e2e)
+          build-args: |
+            GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
           push: false
 
       - name: Build nginx image
