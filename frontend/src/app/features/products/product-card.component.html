@@ -1,0 +1,106 @@
+<div class="container">
+  <div class="toolbar">
+    <a mat-button routerLink="/products">← Назад к списку</a>
+  </div>
+
+  @if (product$ | async; as product) {
+    <div class="card-grid">
+      <mat-card>
+        <mat-card-title>{{ product.name }}</mat-card-title>
+        <mat-card-content>
+          <div class="meta">
+            <span class="code">{{ product.externalCode }}</span>
+            @if (product.discount !== null) {
+              <mat-chip highlighted>скидка {{ product.discount | number: '1.2-2' }}%</mat-chip>
+            }
+          </div>
+
+          <p class="price">{{ product.price | currency: 'RUB':'symbol-narrow':'1.2-2' }}</p>
+
+          @if (product.description) {
+            <p class="description">{{ product.description }}</p>
+          }
+
+          <dl class="dates">
+            <div><dt>Создан</dt><dd>{{ product.createdAt | date: 'dd.MM.yyyy HH:mm' }}</dd></div>
+            <div><dt>Обновлён</dt><dd>{{ product.updatedAt | date: 'dd.MM.yyyy HH:mm' }}</dd></div>
+          </dl>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card>
+        <mat-card-title>Изображения</mat-card-title>
+        <mat-card-content>
+          @if (product.images.length === 0) {
+            <p class="empty">Нет изображений</p>
+          } @else {
+            @for (image of product.images; track image.id; let i = $index) {
+              @if (i === selectedImage()) {
+                @if (!isFailed(image.publicUrl ?? image.url)) {
+                  <img
+                    class="gallery-main"
+                    [src]="image.publicUrl ?? image.url"
+                    [alt]="product.name"
+                    (error)="markFailed(image.publicUrl ?? image.url)"
+                  >
+                } @else {
+                  <div class="gallery-main-placeholder">изображение недоступно</div>
+                }
+              }
+            }
+
+            @if (product.images.length > 1) {
+              <div class="gallery-thumbs">
+                @for (image of product.images; track image.id; let i = $index) {
+                  <img
+                    [src]="image.publicUrl ?? image.url"
+                    [class.active]="i === selectedImage()"
+                    alt=""
+                    loading="lazy"
+                    (click)="selectImage(i)"
+                    (error)="markFailed(image.publicUrl ?? image.url)"
+                  >
+                }
+              </div>
+            }
+          }
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <mat-card class="mt-16">
+      <mat-card-title>Дополнительные атрибуты</mat-card-title>
+      <mat-card-content>
+        @if (product.attributes.length === 0) {
+          <p class="empty">Нет атрибутов</p>
+        } @else {
+          <table class="attributes">
+            <thead>
+            <tr><th>Ключ</th><th>Значение</th></tr>
+            </thead>
+            <tbody>
+            @for (attribute of product.attributes; track attribute.id) {
+              <tr>
+                <td class="key">{{ attribute.key }}</td>
+                <td>{{ attribute.value }}</td>
+              </tr>
+            }
+            </tbody>
+          </table>
+        }
+      </mat-card-content>
+    </mat-card>
+  } @else {
+    <p class="empty">Товар не найден</p>
+  }
+
+  @if (lastImport$ | async; as lastImport) {
+    <mat-expansion-panel class="mt-16" [expanded]="lastImport.status === 'processing' || lastImport.status === 'pending'">
+      <mat-expansion-panel-header>
+        <mat-panel-title>Последний импорт</mat-panel-title>
+        <mat-panel-description>{{ lastImport.originalName }}</mat-panel-description>
+      </mat-expansion-panel-header>
+      <app-import-status [job]="lastImport" />
+    </mat-expansion-panel>
+  }
+</div>

@@ -1,0 +1,14 @@
+.git
+.env
+PLAN.md
+task_v6 Фул.md
+import example (2) Фул.xlsx
+backend/vendor
+backend/var
+backend/storage/images
+backend/storage/imports
+frontend/node_modules
+frontend/dist
+frontend/.angular
+frontend/playwright-report
+frontend/test-results

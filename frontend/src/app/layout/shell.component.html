@@ -1,0 +1,12 @@
+<mat-toolbar color="primary">
+  <span>Импорт товаров</span>
+  <span class="spacer"></span>
+  <nav class="nav">
+    <a mat-button routerLink="/products">Товары</a>
+    <a mat-button routerLink="/import">Импорт</a>
+  </nav>
+  <span class="user">{{ user }}</span>
+  <button mat-button (click)="logout()">Выйти</button>
+</mat-toolbar>
+
+<router-outlet />

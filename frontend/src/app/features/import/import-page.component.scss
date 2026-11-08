@@ -1,0 +1,23 @@
+.hint {
+  color: rgba(0, 0, 0, 0.6);
+  max-width: 640px;
+}
+
+.file-input {
+  display: none;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.file-name {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.error {
+  color: #b00020;
+}

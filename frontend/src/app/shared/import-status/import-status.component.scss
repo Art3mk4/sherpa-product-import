@@ -1,0 +1,65 @@
+.import-status {
+  display: block;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.file {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.counters {
+  margin: 12px 0 0;
+}
+
+.fatal {
+  color: #b00020;
+}
+
+.link {
+  color: #1976d2;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.status-pending {
+  background: #eceff1;
+}
+
+.status-processing {
+  background: #e3f2fd;
+}
+
+.status-completed {
+  background: #e8f5e9;
+}
+
+.status-failed {
+  background: #ffebee;
+}
+
+.report {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+
+  th, td {
+    text-align: left;
+    padding: 6px 10px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    vertical-align: top;
+  }
+
+  th {
+    color: rgba(0, 0, 0, 0.54);
+    font-weight: 500;
+  }
+}

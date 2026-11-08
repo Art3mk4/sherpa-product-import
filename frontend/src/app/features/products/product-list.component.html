@@ -1,0 +1,110 @@
+<div class="container">
+  <mat-card class="filters">
+    <mat-card-title>Товары</mat-card-title>
+    <mat-card-content>
+      <form [formGroup]="filterForm" (ngSubmit)="applyFilter()" class="filters-form">
+        <mat-form-field appearance="outline">
+          <mat-label>Название</mat-label>
+          <input matInput formControlName="name" placeholder="легинсы">
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Цена от</mat-label>
+          <input matInput type="number" formControlName="priceMin" min="0">
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Цена до</mat-label>
+          <input matInput type="number" formControlName="priceMax" min="0">
+        </mat-form-field>
+
+        <div class="filter-buttons">
+          <button mat-raised-button color="primary" type="submit">Найти</button>
+          <button mat-stroked-button type="button" (click)="resetFilter()">Сбросить</button>
+        </div>
+      </form>
+
+      @if (rangeError) {
+        <p class="error">«Цена до» должна быть не меньше «Цена от»</p>
+      }
+    </mat-card-content>
+  </mat-card>
+
+  @if (vm$ | async; as vm) {
+    @if (vm.loading) {
+      <mat-progress-bar mode="indeterminate" />
+    }
+
+    @if (vm.error) {
+      <p class="error mt-16">{{ vm.error }}</p>
+    }
+
+    @if (!vm.loading && vm.items.length === 0 && !vm.error) {
+      <p class="empty mt-16">Ничего не найдено</p>
+    }
+
+    @if (vm.items.length > 0) {
+      <table mat-table [dataSource]="vm.items" class="mt-16 products-table">
+        <ng-container matColumnDef="image">
+          <th mat-header-cell *matHeaderCellDef>Фото</th>
+          <td mat-cell *matCellDef="let product">
+            @if (product.image; as src) {
+              <img [src]="src" class="thumb" alt="" loading="lazy" (error)="imgError.set(src, true)">
+              @if (imgError.get(src)) {
+                <span class="thumb-placeholder">нет</span>
+              }
+            } @else {
+              <span class="thumb-placeholder">нет</span>
+            }
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef>Наименование</th>
+          <td mat-cell *matCellDef="let product">
+            <a [routerLink]="['/products', product.id]" class="product-link">{{ product.name }}</a>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="externalCode">
+          <th mat-header-cell *matHeaderCellDef>Внешний код</th>
+          <td mat-cell *matCellDef="let product" class="mono">{{ product.externalCode }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="price">
+          <th mat-header-cell *matHeaderCellDef>Цена</th>
+          <td mat-cell *matCellDef="let product">
+            {{ product.price | currency: 'RUB':'symbol-narrow':'1.2-2' }}
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="discount">
+          <th mat-header-cell *matHeaderCellDef>Скидка</th>
+          <td mat-cell *matCellDef="let product">
+            @if (product.discount !== null) {
+              {{ product.discount | number: '1.2-2' }}%
+            } @else {
+              —
+            }
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr
+          mat-row
+          *matRowDef="let row; columns: displayedColumns"
+          class="row-link"
+          [routerLink]="['/products', row.id]"
+        ></tr>
+      </table>
+
+      <mat-paginator
+        [length]="vm.meta.total"
+        [pageIndex]="vm.meta.page - 1"
+        [pageSize]="vm.meta.limit"
+        [pageSizeOptions]="[10, 20, 50]"
+        (page)="onPage($event)"
+      />
+    }
+  }
+</div>

@@ -1,0 +1,12 @@
+.env
+backend/vendor/
+backend/var/
+backend/storage/images/*
+backend/storage/imports/*
+!backend/storage/images/.gitkeep
+!backend/storage/imports/.gitkeep
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+frontend/playwright-report/
+frontend/test-results/

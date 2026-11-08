@@ -1,0 +1,22 @@
+.login-wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+mat-card {
+  width: 380px;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 8px;
+}
+
+.error {
+  color: #b00020;
+  margin: 4px 0 8px;
+}

@@ -1,0 +1,62 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./docker/db/init-test-db.sql:/docker-entrypoint-initdb.d/01-test-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 3s
+      retries: 20
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    ports: ["15672:15672"]
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      retries: 30
+
+  migrate:
+    build: { context: ., dockerfile: docker/php/Dockerfile, target: "${APP_TARGET:-dev}" }
+    env_file: .env
+    command: ["php", "bin/console", "migrations:migrate", "--no-interaction", "--allow-no-migration"]
+    depends_on: { db: { condition: service_healthy } }
+    restart: "no"
+
+  app:
+    build: { context: ., dockerfile: docker/php/Dockerfile, target: "${APP_TARGET:-dev}" }
+    env_file: .env
+    volumes: [storage:/var/www/storage]
+    dns: ["${DOCKER_DNS:-1.1.1.1}"]   # DNS для внешних запросов (скачивание изображений при импорте)
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      rabbitmq: { condition: service_healthy }
+
+  worker:
+    build: { context: ., dockerfile: docker/php/Dockerfile, target: "${APP_TARGET:-dev}" }
+    env_file: .env
+    command: ["php", "bin/console", "app:worker", "--time-limit=3600", "--memory-limit=128M"]
+    volumes: [storage:/var/www/storage]
+    dns: ["${DOCKER_DNS:-1.1.1.1}"]   # DNS для внешних запросов (скачивание изображений при импорте)
+    restart: unless-stopped
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      rabbitmq: { condition: service_healthy }
+
+  nginx:
+    build: { context: ., dockerfile: docker/nginx/Dockerfile }
+    ports: ["${NGINX_PORT:-8080}:80"]
+    volumes: [storage:/var/www/storage:ro]
+    depends_on: [app]
+
+volumes:
+  db-data:
+  storage:

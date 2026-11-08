@@ -1,0 +1,37 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+require __DIR__ . '/../vendor/autoload.php';
+
+use App\Command\LoadFixturesCommand;
+use App\Command\WorkerCommand;
+use Doctrine\Migrations\Configuration\EntityManager\ExistingEntityManager;
+use Doctrine\Migrations\Configuration\Migration\ConfigurationArray;
+use Doctrine\Migrations\DependencyFactory;
+use Doctrine\Migrations\Tools\Console\ConsoleRunner;
+use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\Console\Application;
+
+$container = (require __DIR__ . '/../config/container.php')();
+$entityManager = $container->get(EntityManagerInterface::class);
+
+$migrationsConfig = new ConfigurationArray(require __DIR__ . '/../config/migrations.php');
+$dependencyFactory = DependencyFactory::fromEntityManager(
+    $migrationsConfig,
+    new ExistingEntityManager($entityManager),
+);
+
+$application = new Application('sherpa-import', '1.0.0');
+
+// команды doctrine/migrations (migrations:migrate, migrations:diff, ...)
+ConsoleRunner::addCommands($application, $dependencyFactory);
+
+// служебные команды приложения
+$application->addCommands([
+    $container->get(WorkerCommand::class),
+    $container->get(LoadFixturesCommand::class),
+]);
+
+$application->run();

@@ -1,0 +1,491 @@
+openapi: 3.0.3
+info:
+  title: Импорт/Экспорт товаров — API
+  description: |
+    Тестовое задание: импорт товаров из .xlsx (асинхронно, через RabbitMQ),
+    список и карточки товаров. Аутентификация — JWT (Bearer), единственный
+    админ задаётся переменными окружения ADMIN_EMAIL / ADMIN_PASSWORD.
+  version: 1.0.0
+servers:
+  - url: /
+    description: Текущий хост (nginx проксирует /api в php-fpm)
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/health:
+    get:
+      summary: Health check (db + broker)
+      security: []
+      tags: [Служебные]
+      responses:
+        '200':
+          description: Всё живо
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+                  checks:
+                    type: object
+                    properties:
+                      db: { type: string, example: ok }
+                      broker: { type: string, example: ok }
+        '503':
+          description: Один из компонентов недоступен (status = fail)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/auth/login:
+    post:
+      summary: Вход (JWT)
+      security: []
+      tags: [Аутентификация]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, example: admin@example.com }
+                password: { type: string, example: admin123 }
+      responses:
+        '200':
+          description: Токен выдан
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+                  expiresIn: { type: integer, example: 3600 }
+        '401':
+          description: Неверный логин или пароль
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/docs:
+    get:
+      summary: Swagger UI
+      security: []
+      tags: [Служебные]
+      responses:
+        '200':
+          description: HTML-страница Swagger UI
+          content:
+            text/html:
+              schema: { type: string }
+
+  /api/docs/openapi.yaml:
+    get:
+      summary: OpenAPI-спецификация
+      security: []
+      tags: [Служебные]
+      responses:
+        '200':
+          description: YAML-файл спеки
+          content:
+            application/yaml:
+              schema: { type: string }
+
+  /api/products:
+    get:
+      summary: Список товаров (серверная пагинация + поиск/фильтры)
+      tags: [Товары]
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1, default: 1 }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - in: query
+          name: name
+          description: Поиск по наименованию (регистронезависимый, частичное совпадение)
+          schema: { type: string, example: легинсы }
+        - in: query
+          name: price_min
+          schema: { type: number, minimum: 0, example: 500 }
+        - in: query
+          name: price_max
+          schema: { type: number, minimum: 0, example: 1500 }
+      responses:
+        '200':
+          description: Страница списка
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/ProductListItem' }
+                  meta: { $ref: '#/components/schemas/PaginationMeta' }
+        '401':
+          description: Нет/неверный токен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Некорректные параметры (page/limit/price_*)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      summary: Создать товар
+      tags: [Товары]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProductInput' }
+      responses:
+        '201':
+          description: Создан
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Product' }
+        '409':
+          description: externalCode уже занят
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Ошибка валидации
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/products/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: integer, minimum: 1 }
+    get:
+      summary: Карточка товара (поля, атрибуты, изображения)
+      tags: [Товары]
+      responses:
+        '200':
+          description: Товар
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Product' }
+        '404':
+          description: Не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      summary: Обновить товар
+      tags: [Товары]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProductInput' }
+      responses:
+        '200':
+          description: Обновлён
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Product' }
+        '404':
+          description: Не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: externalCode уже занят
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Удалить товар
+      tags: [Товары]
+      responses:
+        '204':
+          description: Удалён
+        '404':
+          description: Не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/imports:
+    post:
+      summary: Загрузить xlsx на импорт (асинхронно, rate-limited)
+      description: |
+        Файл валидируется (расширение, MIME, структура zip, размер), сохраняется,
+        задача import_jobs уходит в RabbitMQ. Прогресс — GET /api/imports/{id}.
+        Лимит по умолчанию — 5 запросов в минуту на пользователя.
+      tags: [Импорт]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: .xlsx ≤ 10 МБ
+      responses:
+        '202':
+          description: Задача принята
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  status: { type: string, example: pending }
+          headers:
+            X-RateLimit-Remaining:
+              schema: { type: integer }
+            X-RateLimit-Limit:
+              schema: { type: integer }
+        '401':
+          description: Нет/неверный токен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Файл не прошёл валидацию
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Превышен лимит запросов
+          headers:
+            Retry-After:
+              schema: { type: integer }
+              description: Секунд до возможности повтора
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/imports/latest:
+    get:
+      summary: Последняя задача импорта
+      tags: [Импорт]
+      responses:
+        '200':
+          description: Последняя задача (в любом статусе)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportJob' }
+        '404':
+          description: Импорты ещё не запускались
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/imports/{id}:
+    get:
+      summary: Статус задачи импорта (для polling)
+      tags: [Импорт]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Задача
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportJob' }
+        '404':
+          description: Задача не найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    PaginationMeta:
+      type: object
+      properties:
+        page: { type: integer, example: 1 }
+        limit: { type: integer, example: 20 }
+        total: { type: integer, example: 40 }
+        totalPages: { type: integer, example: 2 }
+
+    ProductAttribute:
+      type: object
+      properties:
+        id: { type: integer }
+        key: { type: string, example: Размер }
+        value: { type: string, example: 46(M) }
+
+    ProductImage:
+      type: object
+      properties:
+        id: { type: integer }
+        url: { type: string, example: 'http://catalog.collant.ru/SNL-504038_m.jpg' }
+        path:
+          type: string
+          nullable: true
+          description: Локальный путь; null, если скачать не удалось
+        publicUrl:
+          type: string
+          nullable: true
+          example: '/storage/images/ab/ab12cd….jpg'
+
+    ProductListItem:
+      type: object
+      properties:
+        id: { type: integer }
+        externalCode: { type: string, example: 3UHfAid1jaMiwgBuNvnsf3 }
+        name: { type: string }
+        price: { type: number, example: 1320.0 }
+        discount:
+          type: number
+          nullable: true
+          example: 33.33
+        image:
+          type: string
+          nullable: true
+          description: Миниатюра (publicUrl первого изображения либо исходный url)
+
+    Product:
+      allOf:
+        - $ref: '#/components/schemas/ProductListItem'
+        - type: object
+          properties:
+            description:
+              type: string
+              nullable: true
+            createdAt: { type: string, format: date-time }
+            updatedAt: { type: string, format: date-time }
+            attributes:
+              type: array
+              items: { $ref: '#/components/schemas/ProductAttribute' }
+            images:
+              type: array
+              items: { $ref: '#/components/schemas/ProductImage' }
+
+    ProductInput:
+      type: object
+      required: [externalCode, name, price]
+      properties:
+        externalCode: { type: string, maxLength: 255 }
+        name: { type: string, maxLength: 500 }
+        description: { type: string, nullable: true }
+        price: { type: number, exclusiveMinimum: 0, example: 1320 }
+        discount:
+          type: number
+          nullable: true
+          description: 'Скидка, % = (Цена продажи − Закупочная цена) / Цена продажи × 100'
+        attributes:
+          type: array
+          items:
+            type: object
+            required: [key, value]
+            properties:
+              key: { type: string, example: Размер }
+              value: { type: string, example: 46(M) }
+
+    ImportError:
+      type: object
+      properties:
+        row: { type: integer, example: 7 }
+        externalCode:
+          type: string
+          nullable: true
+        messages:
+          type: array
+          items: { type: string }
+          example: ['Цена продажи: Некорректная цена: "abc"']
+
+    ImportWarning:
+      type: object
+      properties:
+        row: { type: integer }
+        externalCode:
+          type: string
+          nullable: true
+        message: { type: string, example: 'Не удалось скачать изображение …: HTTP 404' }
+
+    ImportJob:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        status:
+          type: string
+          enum: [pending, processing, completed, failed]
+        originalName: { type: string, example: import_example.xlsx }
+        totalRows: { type: integer, example: 40 }
+        processedRows: { type: integer, example: 15 }
+        successCount: { type: integer, example: 14 }
+        errorCount: { type: integer, example: 1 }
+        progress: { type: number, example: 37.5 }
+        errors:
+          type: array
+          items: { $ref: '#/components/schemas/ImportError' }
+        warnings:
+          type: array
+          items: { $ref: '#/components/schemas/ImportWarning' }
+        message:
+          type: string
+          nullable: true
+          description: Фатальная ошибка задачи (для failed)
+        createdAt: { type: string, format: date-time }
+        startedAt:
+          type: string
+          format: date-time
+          nullable: true
+        finishedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: validation_failed
+            message:
+              type: string
+              example: Ошибка валидации
+            details:
+              type: object
+              additionalProperties:
+                type: array
+                items: { type: string }
+              example:
+                file: ['Допустимо только расширение .xlsx']

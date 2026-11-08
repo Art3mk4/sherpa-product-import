@@ -1,0 +1,47 @@
+<div class="container">
+  <mat-card>
+    <mat-card-title>Импорт товаров из .xlsx</mat-card-title>
+    <mat-card-content>
+      <p class="hint">
+        Файл обрабатывается асинхронно: строка товара валидируется, изображения
+        скачиваются, дубликаты по внешнему коду обновляются, а не создаются заново.
+      </p>
+
+      <input
+        type="file"
+        class="file-input"
+        accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        (change)="onFileSelected($event)"
+        #fileInput
+      >
+
+      <div class="actions">
+        <button mat-stroked-button (click)="fileInput.click()" [disabled]="busy()">
+          Выбрать файл
+        </button>
+        <span class="file-name">{{ fileName || 'файл не выбран' }}</span>
+        <button
+          mat-raised-button
+          color="primary"
+          (click)="startImport()"
+          [disabled]="!selectedFile || busy()"
+        >
+          Импортировать
+        </button>
+      </div>
+
+      @if (fileError) {
+        <p class="error">{{ fileError }}</p>
+      }
+      @if (uploadError) {
+        <p class="error">{{ uploadError }}</p>
+      }
+
+      @if (job$) {
+        <div class="mt-24">
+          <app-import-status [job]="job$ | async" />
+        </div>
+      }
+    </mat-card-content>
+  </mat-card>
+</div>

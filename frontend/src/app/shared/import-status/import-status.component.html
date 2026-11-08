@@ -1,0 +1,83 @@
+@if (job(); as j) {
+  <div class="import-status">
+    <div class="header">
+      <mat-chip [class]="statusClasses[j.status]" [highlighted]="true">
+        {{ statusLabels[j.status] }}
+      </mat-chip>
+      <span class="file">{{ j.originalName }}</span>
+    </div>
+
+    @if (j.status === 'pending') {
+      <mat-progress-bar mode="indeterminate" />
+    } @else {
+      <mat-progress-bar mode="determinate" [value]="j.progress" />
+    }
+
+    <p class="counters">
+      Обработано {{ j.processedRows }} из {{ j.totalRows }} —
+      успешно {{ j.successCount }},
+      ошибок {{ j.errorCount }}
+      ({{ j.progress | number: '1.1-1' }}%)
+    </p>
+
+    @if (j.status === 'completed') {
+      <p><a routerLink="/products" class="link">Перейти к списку товаров →</a></p>
+    }
+
+    @if (j.status === 'failed' && j.message) {
+      <p class="fatal">Ошибка задачи: {{ j.message }}</p>
+    }
+
+    @if (j.errors.length > 0) {
+      <mat-expansion-panel class="mt-16">
+        <mat-expansion-panel-header>
+          <mat-panel-title>Ошибки ({{ j.errors.length }})</mat-panel-title>
+          <mat-panel-description>строки, не попавшие в базу</mat-panel-description>
+        </mat-expansion-panel-header>
+
+        <table class="report">
+          <thead>
+          <tr><th>Строка</th><th>Внешний код</th><th>Сообщения</th></tr>
+          </thead>
+          <tbody>
+          @for (error of j.errors; track error.row) {
+            <tr>
+              <td>{{ error.row }}</td>
+              <td>{{ error.externalCode ?? '—' }}</td>
+              <td>
+                @for (message of error.messages; track message) {
+                  <div>{{ message }}</div>
+                }
+              </td>
+            </tr>
+          }
+          </tbody>
+        </table>
+      </mat-expansion-panel>
+    }
+
+    @if (j.warnings.length > 0) {
+      <mat-expansion-panel class="mt-16">
+        <mat-expansion-panel-header>
+          <mat-panel-title>Предупреждения ({{ j.warnings.length }})</mat-panel-title>
+          <mat-panel-description>например, не скачанные изображения</mat-panel-description>
+        </mat-expansion-panel-header>
+
+        <table class="report">
+          <thead>
+          <tr><th>Строка</th><th>Внешний код</th><th>Предупреждение</th></tr>
+          </thead>
+          <tbody>
+          @for (warning of j.warnings; track warning.row) {
+            <tr>
+              <td>{{ warning.row }}</td>
+              <td>{{ warning.externalCode ?? '—' }}</td>
+              <td>{{ warning.message }}</td>
+            </tr>
+          }
+          </tbody>
+        </table>
+      </mat-expansion-panel>
+    }
+  </div>
+}
